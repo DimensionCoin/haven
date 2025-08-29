@@ -2,14 +2,16 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { SignedIn, SignedOut, useClerk, useUser } from "@clerk/nextjs";
+import { BellIcon } from "lucide-react";
 
 const NAV = [
   { name: "My Balance", href: "/dashboard" },
-  { name: "Accounts", href: "/accounts" },
+  { name: "Accounts", href: "/account" },
+  { name: "Invest", href: "/invest" },
+  { name: "Activity", href: "/activity" },
   { name: "Cards", href: "/cards" },
-  { name: "Transactions", href: "/transactions" },
 ];
 
 export default function Header() {
@@ -18,27 +20,41 @@ export default function Header() {
   const { user } = useUser();
   const { signOut } = useClerk();
   const pathname = usePathname();
-  const [currentTime, setCurrentTime] = useState("");
+  const router = useRouter();
 
   const menuRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
 
+  // 🔑 Check KYC status
   useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      setCurrentTime(
-        now.toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        })
-      );
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, []);
+    async function checkKyc() {
+      if (!user) return; // only run when logged in
+      try {
+        const res = await fetch("/api/me");
+        const data = await res.json();
 
+        if (data.ok && data.user) {
+          if (
+            data.user.kycStatus !== "approved" &&
+            pathname !== "/onboarding"
+          ) {
+            router.replace("/onboarding");
+          }
+        } else {
+          // user record not found → send to onboarding
+          if (pathname !== "/onboarding") {
+            router.replace("/onboarding");
+          }
+        }
+      } catch (err) {
+        console.error("KYC check failed", err);
+      }
+    }
+
+    checkKyc();
+  }, [user, pathname, router]);
+
+  // Handle menu dismiss
   useEffect(() => {
     function onClick(e: MouseEvent) {
       const t = e.target as Node;
@@ -64,68 +80,50 @@ export default function Header() {
       document.removeEventListener("mousedown", onClick);
       document.removeEventListener("keydown", onKey);
     };
-  }, [menuOpen, sidebarOpen]); // Added sidebarOpen to dependency array to fix unused variable warning
+  }, [menuOpen]);
 
   const firstName = user?.firstName ?? "User";
   const email = user?.emailAddresses?.[0]?.emailAddress ?? "";
 
   return (
     <>
-      {/* top bar */}
       <header className="sticky top-0 z-40 w-full border-b border-border bg-background/40 backdrop-blur">
-        <div className="flex h-8 items-center justify-between bg-black/20 px-4 text-xs text-white/90 md:hidden">
-          <span className="font-medium">{currentTime}</span>
-          <div className="flex items-center gap-1">
-            <div className="flex gap-1">
-              <div className="h-1 w-1 rounded-full bg-white/60"></div>
-              <div className="h-1 w-1 rounded-full bg-white/80"></div>
-              <div className="h-1 w-1 rounded-full bg-white"></div>
-              <div className="h-1 w-1 rounded-full bg-white"></div>
-            </div>
-            <svg
-              className="ml-1 h-3 w-3"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M17 4a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4zM5 6h10v4H5V6z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
-        </div>
-
         <div className="mx-auto flex h-16 items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
-                <svg
-                  className="h-4 w-4 text-primary-foreground"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 2L3 7v11h4v-6h6v6h4V7l-7-5z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div>
-                <SignedIn>
-                  <p className="text-xs text-muted-foreground">Hello,</p>
-                  <p className="font-semibold text-foreground">Haven Bank</p>
-                </SignedIn>
-                <SignedOut>
-                  <Link
-                    href="/dashboard"
-                    className="font-semibold text-foreground"
-                  >
-                    Haven Bank
-                  </Link>
-                </SignedOut>
-              </div>
+              <Link href={"/dashboard"}>
+                <div className="flex gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
+                    <svg
+                      className="h-4 w-4 text-primary-foreground"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 2L3 7v11h4v-6h6v6h4V7l-7-5z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <SignedIn>
+                      <p className="text-xs text-muted-foreground">Hello,</p>
+                      <p className="font-semibold text-foreground">
+                        {user?.firstName}
+                      </p>
+                    </SignedIn>
+                    <SignedOut>
+                      <Link
+                        href="/dashboard"
+                        className="font-semibold text-foreground"
+                      >
+                        Haven Bank
+                      </Link>
+                    </SignedOut>
+                  </div>
+                </div>
+              </Link>
             </div>
           </div>
 
@@ -151,37 +149,11 @@ export default function Header() {
           {/* right side */}
           <div className="flex items-center gap-3">
             <SignedIn>
-              <button className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-foreground hover:bg-white/20 transition-colors">
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 17h5l-5 5v-5zM9 7H4l5-5v5z"
-                  />
-                </svg>
-              </button>
-
-              <button className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-foreground hover:bg-white/20 transition-colors">
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 17h5l-5-5v5zM4 12l5 5 5-5"
-                  />
-                </svg>
-              </button>
+              <Link href={"/notifications"}>
+                <button className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-foreground hover:bg-white/20 transition-colors">
+                  <BellIcon />
+                </button>
+              </Link>
 
               <div className="relative">
                 <button
@@ -198,30 +170,24 @@ export default function Header() {
                   <div
                     ref={menuRef}
                     role="menu"
-                    className="absolute right-0 mt-2 w-56 overflow-hidden rounded-3xl glass shadow-2xl"
+                    className="absolute right-0 mt-2 w-56 overflow-hidden rounded-3xl menu-surface"
                   >
-                    <div className="border-b border-border px-4 py-3 text-xs text-muted-foreground">
+                    <div className="menu-divider border-b px-4 py-3 text-xs text-muted-foreground">
                       <p className="uppercase tracking-wide">Signed in as</p>
                       <p className="truncate text-foreground">{email}</p>
                     </div>
-                    <Link
-                      href="/account"
-                      className="block px-4 py-2 text-sm text-foreground hover:bg-white/5"
-                      onClick={() => setMenuOpen(false)}
-                      role="menuitem"
-                    >
-                      Account
-                    </Link>
+
                     <Link
                       href="/settings"
-                      className="block px-4 py-2 text-sm text-foreground hover:bg-white/5"
+                      className="menu-item"
                       onClick={() => setMenuOpen(false)}
                       role="menuitem"
                     >
                       Settings
                     </Link>
+
                     <button
-                      className="block w-full px-4 py-2 text-left text-sm text-red-300 hover:bg-red-500/10"
+                      className="w-full text-left menu-item text-red-300 hover:bg-red-500/10"
                       onClick={async () => {
                         setMenuOpen(false);
                         await signOut();
@@ -233,27 +199,6 @@ export default function Header() {
                   </div>
                 )}
               </div>
-
-              <button
-                aria-label="Open menu"
-                onClick={() => setSidebarOpen(true)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-foreground hover:bg-white/20 transition-colors md:hidden"
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M6 6h12M18 6L6 18"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </button>
             </SignedIn>
 
             <SignedOut>
@@ -264,73 +209,6 @@ export default function Header() {
           </div>
         </div>
       </header>
-
-      {/* sidebar drawer */}
-      {sidebarOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur"
-            onClick={() => setSidebarOpen(false)}
-            aria-hidden="true"
-          />
-          <aside
-            className="fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] transform transition-transform duration-200 ease-out"
-            style={{
-              transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
-            }}
-          >
-            <div className="glass h-full border-r border-border">
-              <div className="flex h-16 items-center justify-between border-b border-border px-4">
-                <span className="font-semibold text-foreground">Menu</span>
-                <button
-                  aria-label="Close menu"
-                  onClick={() => setSidebarOpen(false)}
-                  className="icon-btn"
-                >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M6 6l12 12M18 6L6 18"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-              </div>
-
-              <nav className="px-2 py-3">
-                {NAV.map((item) => {
-                  const active = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setSidebarOpen(false)}
-                      className={`mb-1 block rounded-2xl px-3 py-2 text-sm transition ${
-                        active
-                          ? "tab-active"
-                          : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                      }`}
-                    >
-                      {item.name}
-                    </Link>
-                  );
-                })}
-
-                <div className="mt-6 border-t border-border px-3 pt-4 text-xs text-muted-foreground">
-                  © {new Date().getFullYear()} Haven Bank
-                </div>
-              </nav>
-            </div>
-          </aside>
-        </>
-      )}
     </>
   );
 }
