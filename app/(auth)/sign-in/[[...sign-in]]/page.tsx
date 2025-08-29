@@ -13,7 +13,7 @@ export default function SignInPage() {
         {Array.from({ length: 30 }).map((_, i) => (
           <div
             key={i}
-            className="absolute rounded-full bg-teal-400/30"
+            className="absolute rounded-full bg-[rgb(182,255,62)]/30"
             style={{
               width: `${Math.random() * 4 + 1}px`,
               height: `${Math.random() * 4 + 1}px`,
@@ -27,12 +27,10 @@ export default function SignInPage() {
 
       {/* Decorative elements */}
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
-        <div className="absolute top-10 left-10 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-10 right-10 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[40rem] bg-cyan-500/5 rounded-full blur-3xl"></div>
+        <div className="absolute top-10 left-10 w-64 h-64 bg-[rgb(182,255,62)]/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-10 right-10 w-96 h-96 bg-[rgb(182,255,62)]/8 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[40rem] bg-[rgb(182,255,62)]/5 rounded-full blur-3xl"></div>
       </div>
-
-      
 
       <main className="flex-1 flex flex-col items-center justify-center relative z-10 px-4 py-8">
         <motion.div
@@ -41,11 +39,11 @@ export default function SignInPage() {
           transition={{ duration: 0.5 }}
           className="max-w-md w-full mb-8 text-center"
         >
-          <h1 className="text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-teal-400 via-cyan-400 to-indigo-500">
-            Welcome Back
+          <h1 className="text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-[rgb(182,255,62)] to-white">
+            Welcome to Haven
           </h1>
           <p className="text-zinc-400">
-            Sign in to access your personalized crypto insights
+            Sign in to access your digital finance dashboard
           </p>
         </motion.div>
 
@@ -60,17 +58,17 @@ export default function SignInPage() {
             appearance={{
               baseTheme: dark,
               variables: {
-                colorPrimary: "#2DD4BF", // teal-400
+                colorPrimary: "rgb(182,255,62)",
                 colorBackground: "transparent",
-                colorInputBackground: "rgba(39, 39, 42, 0.4)", // zinc-800 with transparency
-                colorInputText: "#F4F4F5", // zinc-100
-                colorTextSecondary: "#A1A1AA", // zinc-400
-                colorTextOnPrimaryBackground: "#FFFFFF",
+                colorInputBackground: "rgba(39, 39, 42, 0.4)",
+                colorInputText: "#F4F4F5",
+                colorTextSecondary: "#A1A1AA",
+                colorTextOnPrimaryBackground: "#000000", // Changed to black for better contrast on lime
                 borderRadius: "0.75rem",
                 fontFamily: "inherit",
                 fontFamilyButtons: "inherit",
-                colorDanger: "#EF4444", // red-500
-                colorSuccess: "#10B981", // emerald-500
+                colorDanger: "#EF4444",
+                colorSuccess: "rgb(182,255,62)",
               },
               elements: {
                 rootBox: "w-full",
@@ -86,15 +84,18 @@ export default function SignInPage() {
                 dividerText: "text-zinc-500 px-2",
                 formFieldLabel: "text-zinc-300 font-medium",
                 formFieldInput:
-                  "bg-zinc-800/30 backdrop-blur-sm border-zinc-700/50 text-zinc-100 focus:border-teal-400/50 focus:ring focus:ring-teal-400/20 transition-all",
+                  "bg-zinc-800/30 backdrop-blur-sm border-zinc-700/50 text-zinc-100 focus:border-[rgb(182,255,62)]/50 focus:ring focus:ring-[rgb(182,255,62)]/20 transition-all",
                 formButtonPrimary:
-                  "bg-gradient-to-r from-teal-500 to-indigo-500 hover:from-teal-400 hover:to-indigo-400 text-white border-0 transition-all duration-200",
+                  "bg-[rgb(182,255,62)] hover:bg-[rgb(182,255,62)]/90 text-black border-0 transition-all duration-200 font-semibold",
                 footerActionText: "text-zinc-400",
-                footerActionLink: "text-teal-400 hover:text-teal-300",
+                footerActionLink:
+                  "text-[rgb(182,255,62)] hover:text-[rgb(182,255,62)]/80",
                 identityPreviewText: "text-zinc-300",
-                identityPreviewEditButton: "text-teal-400 hover:text-teal-300",
-                formFieldAction: "text-teal-400 hover:text-teal-300",
-                formFieldSuccessText: "text-emerald-500",
+                identityPreviewEditButton:
+                  "text-[rgb(182,255,62)] hover:text-[rgb(182,255,62)]/80",
+                formFieldAction:
+                  "text-[rgb(182,255,62)] hover:text-[rgb(182,255,62)]/80",
+                formFieldSuccessText: "text-[rgb(182,255,62)]",
                 formFieldErrorText: "text-red-400",
                 alert: "bg-zinc-800/50 border border-zinc-700/50 text-zinc-300",
                 alertText: "text-zinc-300",
@@ -104,13 +105,11 @@ export default function SignInPage() {
             }}
           />
         </motion.div>
-
-        
       </main>
 
       <footer className="relative z-10 p-4 text-center">
         <p className="text-zinc-500 text-xs">
-          © {new Date().getFullYear()} SCAR. All rights reserved.
+          © {new Date().getFullYear()} Haven. All rights reserved.
         </p>
       </footer>
 
@@ -132,13 +131,14 @@ export default function SignInPage() {
           }
         }
 
-        /* Force Clerk's button to use gradient */
+        /* Force Clerk's button to use lime green */
         .cl-formButtonPrimary {
-          background: linear-gradient(to right, #14b8a6, #6366f1) !important;
+          background: rgb(182, 255, 62) !important;
+          color: #000000 !important;
         }
 
         .cl-formButtonPrimary:hover {
-          background: linear-gradient(to right, #0d9488, #4f46e5) !important;
+          background: rgba(182, 255, 62, 0.9) !important;
         }
 
         /* Ensure no extra backgrounds */

@@ -5,50 +5,49 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "SCAR",
+  title: "Haven",
   description: "Make more confident choices",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <ClerkProvider>
-        <html lang="en">
-          <body
-            className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-900 text-zinc-100`}
-          >
-            {/* Global background gradients and decorative elements */}
-            <div className="fixed inset-0 bg-zinc-900/80 backdrop-blur-sm -z-10"></div>
-            <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
-              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-teal-500/5 via-transparent to-indigo-500/5"></div>
-              <div className="absolute top-0 right-0 w-96 h-96 bg-teal-400/10 rounded-full blur-3xl"></div>
-              <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl"></div>
-              <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-indigo-600/5 rounded-full blur-3xl"></div>
-              <div className="absolute top-1/3 left-1/4 w-64 h-64 bg-teal-600/5 rounded-full blur-3xl"></div>
-            </div>
+      {/* 👇 force the dark token set */}
+      <html lang="en" className="dark">
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        >
+          {/* subtle lime glow */}
+          <div className="fixed inset-0 -z-10">
+            <div className="absolute inset-0 bg-[radial-gradient(60%_40%_at_80%_10%,rgba(182,255,62,0.08),transparent),radial-gradient(40%_30%_at_10%_80%,rgba(182,255,62,0.06),transparent)]" />
+          </div>
 
-            <Toaster position="top-right" reverseOrder={false} />
+          <Toaster position="top-right" />
 
-            {/* Main area */}
-            <div className="flex flex-1 w-full">
-              {/* Main Content Area with left margin on md+ screens */}
-              <main className="flex-1 w-full overflow-auto ">{children}</main>
-            </div>
-          </body>
-        </html>
+          <div className="min-h-screen flex flex-col">
+            <main className="flex-1">
+              <div className="mx-auto w-full ">{children}</div>
+            </main>
+
+            <footer className="border-t border-border">
+              <div className="mx-auto w-full max-w-6xl px-4 py-4 text-xs text-muted-foreground">
+                © {new Date().getFullYear()} Haven
+              </div>
+            </footer>
+          </div>
+        </body>
+      </html>
     </ClerkProvider>
   );
 }

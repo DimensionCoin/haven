@@ -1,5 +1,6 @@
-// /app/onboarding/page.tsx
 "use client";
+
+import type React from "react";
 
 import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@clerk/nextjs";
@@ -130,228 +131,260 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      <div className="max-w-2xl mx-auto px-4 py-10">
-        <h1 className="text-2xl font-semibold mb-2">
-          Finish setting up your account
-        </h1>
-        <p className="text-sm text-zinc-400 mb-8">
-          You can skip KYC for now, but your dashboard stays locked until you’re
-          verified.
-        </p>
+    <div className="min-h-screen bg-zinc-950 text-white relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-950 to-black" />
+      <div className="absolute top-0 left-0 w-96 h-96 bg-[rgba(182,255,62,0.08)] rounded-full blur-3xl" />
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-[rgba(182,255,62,0.06)] rounded-full blur-3xl" />
+
+      <div className="relative z-10 max-w-2xl mx-auto px-4 py-10">
+        <div className="mb-8 p-6 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
+          <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-white to-zinc-300 bg-clip-text text-transparent">
+            Complete Your Haven Setup
+          </h1>
+          <p className="text-zinc-400">
+            Finish your account setup to unlock DeFi-powered savings with
+            traditional banking security.
+          </p>
+        </div>
 
         {error && (
-          <div className="mb-6 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300">
+          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 backdrop-blur-sm px-4 py-3 text-red-300">
             {error}
           </div>
         )}
 
-        <form onSubmit={onSubmit} className="space-y-6">
-          {/* Country + Display Currency */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="p-6 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10">
+          <form onSubmit={onSubmit} className="space-y-6">
+            {/* Country + Display Currency */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-zinc-300">
+                  Country (ISO-2)
+                </span>
+                <input
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  placeholder="CA"
+                  value={form.countryISO}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      countryISO: e.target.value.toUpperCase(),
+                    }))
+                  }
+                  maxLength={2}
+                  required
+                />
+              </label>
+
+              <label className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-zinc-300">
+                  Display Currency (ISO-4217)
+                </span>
+                <input
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  placeholder="CAD"
+                  value={form.displayCurrency}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      displayCurrency: e.target.value.toUpperCase(),
+                    }))
+                  }
+                  maxLength={3}
+                  required
+                />
+              </label>
+            </div>
+
+            {/* Address */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="flex flex-col gap-2 md:col-span-2">
+                <span className="text-sm font-medium text-zinc-300">
+                  Address line 1
+                </span>
+                <input
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  value={form.line1}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, line1: e.target.value }))
+                  }
+                  required
+                />
+              </label>
+              <label className="flex flex-col gap-2 md:col-span-2">
+                <span className="text-sm font-medium text-zinc-300">
+                  Address line 2 (optional)
+                </span>
+                <input
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  value={form.line2}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, line2: e.target.value }))
+                  }
+                />
+              </label>
+              <label className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-zinc-300">City</span>
+                <input
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  value={form.city}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, city: e.target.value }))
+                  }
+                  required
+                />
+              </label>
+              <label className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-zinc-300">
+                  State/Province
+                </span>
+                <input
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  value={form.stateOrProvince}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, stateOrProvince: e.target.value }))
+                  }
+                  required
+                />
+              </label>
+              <label className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-zinc-300">
+                  Postal code
+                </span>
+                <input
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  value={form.postalCode}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, postalCode: e.target.value }))
+                  }
+                  required
+                />
+              </label>
+            </div>
+
+            {/* Optional PII */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-zinc-300">
+                  Phone (E.164)
+                </span>
+                <input
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  placeholder="+14165551234"
+                  value={form.phoneNumber}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, phoneNumber: e.target.value }))
+                  }
+                />
+              </label>
+              <label className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-zinc-300">
+                  Date of birth
+                </span>
+                <input
+                  type="date"
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  value={form.dob}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, dob: e.target.value }))
+                  }
+                />
+              </label>
+            </div>
+
+            {/* Risk */}
             <label className="flex flex-col gap-2">
-              <span className="text-sm text-zinc-300">Country (ISO-2)</span>
-              <input
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
-                placeholder="CA"
-                value={form.countryISO}
+              <span className="text-sm font-medium text-zinc-300">
+                Savings risk preference
+              </span>
+              <select
+                className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                value={form.riskLevel}
                 onChange={(e) =>
                   setForm((p) => ({
                     ...p,
-                    countryISO: e.target.value.toUpperCase(),
+                    riskLevel: e.target.value as FormState["riskLevel"],
                   }))
                 }
-                maxLength={2}
-                required
-              />
+              >
+                <option value="low" className="bg-zinc-900 text-white">
+                  Low (stablecoin yields only)
+                </option>
+                <option value="medium" className="bg-zinc-900 text-white">
+                  Medium (yields + major assets)
+                </option>
+                <option value="high" className="bg-zinc-900 text-white">
+                  High (aggressive strategies)
+                </option>
+              </select>
             </label>
 
-            <label className="flex flex-col gap-2">
-              <span className="text-sm text-zinc-300">
-                Display Currency (ISO-4217)
-              </span>
-              <input
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
-                placeholder="CAD"
-                value={form.displayCurrency}
-                onChange={(e) =>
-                  setForm((p) => ({
-                    ...p,
-                    displayCurrency: e.target.value.toUpperCase(),
-                  }))
-                }
-                maxLength={3}
-                required
-              />
-            </label>
-          </div>
+            {/* Consents */}
+            <div className="space-y-3 p-4 rounded-lg bg-white/5 border border-white/10">
+              <h3 className="text-sm font-medium text-zinc-300 mb-3">
+                Required Agreements
+              </h3>
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={form.acceptTos}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, acceptTos: e.target.checked }))
+                  }
+                  className="w-4 h-4 rounded border-white/20 bg-white/10 text-[rgb(182,255,62)] focus:ring-[rgb(182,255,62)] focus:ring-offset-0"
+                />
+                <span className="text-sm text-zinc-300">
+                  I accept the Terms of Service
+                </span>
+              </label>
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={form.acceptPrivacy}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, acceptPrivacy: e.target.checked }))
+                  }
+                  className="w-4 h-4 rounded border-white/20 bg-white/10 text-[rgb(182,255,62)] focus:ring-[rgb(182,255,62)] focus:ring-offset-0"
+                />
+                <span className="text-sm text-zinc-300">
+                  I accept the Privacy Policy
+                </span>
+              </label>
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={form.acceptRisk}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, acceptRisk: e.target.checked }))
+                  }
+                  className="w-4 h-4 rounded border-white/20 bg-white/10 text-[rgb(182,255,62)] focus:ring-[rgb(182,255,62)] focus:ring-offset-0"
+                />
+                <span className="text-sm text-zinc-300">
+                  I understand the investment risks
+                </span>
+              </label>
+            </div>
 
-          {/* Address */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="flex flex-col gap-2 md:col-span-2">
-              <span className="text-sm text-zinc-300">Address line 1</span>
-              <input
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
-                value={form.line1}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, line1: e.target.value }))
-                }
-                required
-              />
-            </label>
-            <label className="flex flex-col gap-2 md:col-span-2">
-              <span className="text-sm text-zinc-300">
-                Address line 2 (optional)
-              </span>
-              <input
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
-                value={form.line2}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, line2: e.target.value }))
-                }
-              />
-            </label>
-            <label className="flex flex-col gap-2">
-              <span className="text-sm text-zinc-300">City</span>
-              <input
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
-                value={form.city}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, city: e.target.value }))
-                }
-                required
-              />
-            </label>
-            <label className="flex flex-col gap-2">
-              <span className="text-sm text-zinc-300">State/Province</span>
-              <input
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
-                value={form.stateOrProvince}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, stateOrProvince: e.target.value }))
-                }
-                required
-              />
-            </label>
-            <label className="flex flex-col gap-2">
-              <span className="text-sm text-zinc-300">Postal code</span>
-              <input
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
-                value={form.postalCode}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, postalCode: e.target.value }))
-                }
-                required
-              />
-            </label>
-          </div>
-
-          {/* Optional PII */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="flex flex-col gap-2">
-              <span className="text-sm text-zinc-300">Phone (E.164)</span>
-              <input
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
-                placeholder="+14165551234"
-                value={form.phoneNumber}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, phoneNumber: e.target.value }))
-                }
-              />
-            </label>
-            <label className="flex flex-col gap-2">
-              <span className="text-sm text-zinc-300">Date of birth</span>
-              <input
-                type="date"
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
-                value={form.dob}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, dob: e.target.value }))
-                }
-              />
-            </label>
-          </div>
-
-          {/* Risk */}
-          <label className="flex flex-col gap-2">
-            <span className="text-sm text-zinc-300">
-              Savings risk preference
-            </span>
-            <select
-              className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2"
-              value={form.riskLevel}
-              onChange={(e) =>
-                setForm((p) => ({
-                  ...p,
-                  riskLevel: e.target.value as FormState["riskLevel"],
-                }))
-              }
-            >
-              <option value="low">Low (stablecoin yields only)</option>
-              <option value="medium">Medium (yields + major assets)</option>
-              <option value="high">High (aggressive strategies)</option>
-            </select>
-          </label>
-
-          {/* Consents */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={form.acceptTos}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, acceptTos: e.target.checked }))
-                }
-              />
-              <span className="text-sm text-zinc-300">
-                I accept the Terms of Service
-              </span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={form.acceptPrivacy}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, acceptPrivacy: e.target.checked }))
-                }
-              />
-              <span className="text-sm text-zinc-300">
-                I accept the Privacy Policy
-              </span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={form.acceptRisk}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, acceptRisk: e.target.checked }))
-                }
-              />
-              <span className="text-sm text-zinc-300">
-                I understand the investment risks
-              </span>
-            </label>
-          </div>
-
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-lg bg-teal-500 px-4 py-2 font-medium text-black hover:bg-teal-400 disabled:opacity-60"
-            >
-              {submitting ? "Saving..." : "Finish onboarding"}
-            </button>
-            <button
-              type="button"
-              disabled={submitting}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-zinc-300 hover:bg-zinc-900/60"
-              onClick={() => router.push("/dashboard")}
-              title="You can complete KYC later — your dashboard will be locked until you do."
-            >
-              Do it later
-            </button>
-          </div>
-        </form>
+            <div className="flex items-center gap-3 pt-4">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="rounded-lg bg-[rgb(182,255,62)] px-6 py-3 font-semibold text-black hover:bg-[rgb(182,255,62)]/90 disabled:opacity-60 transition-all duration-200 shadow-lg hover:shadow-[rgb(182,255,62)]/25"
+              >
+                {submitting ? "Saving..." : "Complete Setup"}
+              </button>
+              <button
+                type="button"
+                disabled={submitting}
+                className="rounded-lg border border-white/20 bg-white/5 backdrop-blur-sm px-6 py-3 text-zinc-300 hover:bg-white/10 hover:border-white/30 transition-all duration-200"
+                onClick={() => router.push("/dashboard")}
+                title="You can complete KYC later — your dashboard will be locked until you do."
+              >
+                Skip for now
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
