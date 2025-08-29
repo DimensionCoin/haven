@@ -6,6 +6,7 @@ const isPublicRoute = createRouteMatcher([
   "/sign-up(.*)",
   "/",
   "/api/webhooks/clerk",
+  "/api/onboarding",
   "/api(.*)",
 ]);
 

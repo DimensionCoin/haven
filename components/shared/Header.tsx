@@ -8,8 +8,7 @@ import { SignedIn, SignedOut, useClerk, useUser } from "@clerk/nextjs";
 const navItems = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "Accounts", href: "/account" },
-  { name: "Strategies", href: "/strategies" },
-  { name: "Following", href: "/following" },
+  { name: "Cards", href: "/cards" },
   { name: "Settings", href: "/settings" },
 ];
 
