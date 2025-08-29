@@ -7,7 +7,7 @@ const Landing = () => {
     <main className="min-h-[100svh] bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-white">
       {/* Top nav */}
       <header className="container mx-auto max-w-6xl px-6 py-6 flex items-center justify-between">
-        <div className="text-xl font-bold tracking-tight">Backtester</div>
+        <div className="text-xl font-bold tracking-tight">Haven</div>
         <nav className="flex items-center gap-3">
           <Link
             href="/sign-in"
@@ -16,10 +16,10 @@ const Landing = () => {
             Sign in
           </Link>
           <Link
-            href="/sign-out"
+            href="/sign-up"
             className="inline-flex items-center rounded-xl px-4 py-2 text-sm font-medium bg-white/5 hover:bg-white/15 border border-white/20 backdrop-blur-md transition"
           >
-            Sign out
+            Sign up
           </Link>
         </nav>
       </header>
@@ -28,15 +28,12 @@ const Landing = () => {
       <section className="container mx-auto max-w-6xl px-6 py-16 md:py-24 grid md:grid-cols-2 gap-10 items-center">
         <div>
           <h1 className="text-4xl md:text-6xl font-extrabold leading-tight">
-            Backtest crypto strategies
+            Save Money
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-cyan-300">
               faster and easier
             </span>
           </h1>
-          <p className="mt-5 text-white/70 max-w-xl">
-            Select a coin, run a strategy, and visualize performance with clean
-            candlestick charts. Built for speed and clarity.
-          </p>
+          
 
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
@@ -46,15 +43,15 @@ const Landing = () => {
               Get started — Sign in
             </Link>
             <Link
-              href="/sign-out"
+              href="/sign-up"
               className="inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold bg-white/10 hover:bg-white/20 border border-white/20 text-white transition"
             >
-              Sign out
+              Sign up
             </Link>
           </div>
 
           <p className="mt-4 text-xs text-white/50">
-            No account yet? You can create one from the sign-in page.
+            No account yet? You can create one from the sign-up page.
           </p>
         </div>
 
@@ -74,7 +71,7 @@ const Landing = () => {
       {/* Footer */}
       <footer className="border-t border-white/10">
         <div className="container mx-auto max-w-6xl px-6 py-8 flex items-center justify-between text-xs text-white/50">
-          <span>© {new Date().getFullYear()} smartalgo</span>
+          <span>© {new Date().getFullYear()} Haven</span>
           <div className="flex gap-4">
             <a className="hover:text-white/80" href="#">
               Privacy
