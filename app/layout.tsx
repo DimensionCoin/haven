@@ -1,4 +1,4 @@
-import type React from "react";
+// app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -23,8 +23,8 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      {/* 👇 force the dark token set */}
-      <html lang="en" className="dark">
+      
+      <html lang="en" >
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
@@ -37,7 +37,9 @@ export default function RootLayout({
 
           <div className="min-h-screen flex flex-col">
             <main className="flex-1">
-              <div className="mx-auto w-full ">{children}</div>
+              <div className="mx-auto w-full ">
+                {children}
+              </div>
             </main>
 
             <footer className="border-t border-border">

@@ -1,3 +1,4 @@
+// modals/user.modal.ts
 import mongoose, { Schema } from "mongoose";
 
 const AddressSchema = new Schema(
@@ -9,7 +10,7 @@ const AddressSchema = new Schema(
     postalCode: { type: String, required: true, trim: true },
     country: {
       type: String,
-      required: true, // ISO-3166 alpha-2
+      required: true,
       uppercase: true,
       match: /^[A-Z]{2}$/,
     },
@@ -35,51 +36,58 @@ const UserSchema = new Schema(
       required: true,
       lowercase: true,
       trim: true,
-      // loose email regex; rely on Clerk for strictness
       match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+      index: { unique: true },
     },
 
     firstName: { type: String, trim: true },
     lastName: { type: String, trim: true },
 
+    // Privy server wallet public key (Solana)
     walletAddress: {
       type: String,
       required: true,
-      unique: true, // ensure one wallet per user
+      unique: true,
       index: true,
     },
+
+    // NEW: Privy server wallet id
+    walletId: {
+      type: String,
+      unique: true,
+      sparse: true, // allow missing for old rows
+      index: true,
+    },
+
+    walletProvider: { type: String, enum: ["privy"], default: "privy" },
+    walletChain: { type: String, enum: ["solana"], default: "solana" },
+
+    // Optional future PDA
+    pdaAddress: { type: String, index: true, sparse: true },
 
     countryISO: {
       type: String,
       required: true,
       uppercase: true,
       match: /^[A-Z]{2}$/,
+      index: true,
     },
 
     displayCurrency: {
       type: String,
       default: "CAD",
-      uppercase: true, // e.g., CAD, USD, EUR
+      uppercase: true,
       match: /^[A-Z]{3}$/,
     },
 
-    address: {
-      type: AddressSchema,
-      required: true,
-      select: false, // PII not returned by default
-    },
+    address: { type: AddressSchema, required: true, select: false },
 
-    dob: { type: Date, select: false }, // PII
-    phoneNumber: {
-      type: String,
-      select: false, // PII
-      // optional E.164 check (e.g., +14165551234)
-      match: /^\+?[1-9]\d{1,14}$/,
-    },
+    dob: { type: Date, select: false },
+    phoneNumber: { type: String, select: false, match: /^\+?[1-9]\d{1,14}$/ },
 
     kycStatus: {
       type: String,
-      enum: ["none", "pending", "approved", "rejected"],
+      enum: ["none", "approved"],
       default: "none",
       index: true,
     },
@@ -89,8 +97,7 @@ const UserSchema = new Schema(
       enum: ["low", "medium", "high"],
       default: "low",
     },
-
-    riskLevelUpdatedAt: { type: Date }, // track changes for audit
+    riskLevelUpdatedAt: { type: Date },
 
     features: {
       onramp: { type: Boolean, default: false },
@@ -107,28 +114,19 @@ const UserSchema = new Schema(
 
     consents: [ConsentSchema],
   },
-  {
-    timestamps: true, // adds createdAt/updatedAt
-    versionKey: false,
-    minimize: false,
-  }
+  { timestamps: true, versionKey: false, minimize: false }
 );
 
-// Helpful compound/indexes for common filters
+// ⚠️ Remove duplicate manual indexes for kycStatus/status to silence warnings
+// (we already set `index: true` on the fields above)
 UserSchema.index({ countryISO: 1 });
-UserSchema.index({ kycStatus: 1 });
-UserSchema.index({ status: 1 });
-// You already have unique clerkId; email uniqueness is nice to keep too:
-UserSchema.index({ email: 1 }, { unique: true });
+// email index is already defined inline as unique above; no need to add another.
 
-// Keep displayCurrency in sync with country on first set (optional)
 UserSchema.pre("validate", function (next) {
   if (!this.displayCurrency && this.countryISO === "CA")
     this.displayCurrency = "CAD";
   next();
 });
-
-// Optional: update riskLevelUpdatedAt when risk changes
 UserSchema.pre("save", function (next) {
   if (this.isModified("riskLevel")) this.riskLevelUpdatedAt = new Date();
   next();
@@ -142,5 +140,4 @@ try {
 } catch {
   User = mongoose.model<IUser>("User", UserSchema);
 }
-
 export default User;

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen ">
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Welcome Section */}
         <div className="mb-8">

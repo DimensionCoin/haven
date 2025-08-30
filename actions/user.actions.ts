@@ -1,7 +1,7 @@
 // /actions/user.actions.ts
 import mongoose from "mongoose";
-import { connect } from "@/db"; 
-import User, { IUser } from "../modals/user.modal";
+import { connect } from "@/db";
+import User, { IUser } from "@/modals/user.modal";
 
 // ---------- Error helpers ----------
 export class NotFoundError extends Error {
@@ -44,10 +44,11 @@ export type CreateUserInput = {
   email: string;
   firstName?: string;
   lastName?: string;
-  walletAddress: string;
+  walletAddress: string; // Privy public key
+  walletId?: string; // Privy wallet id
   countryISO: string; // ISO-3166 alpha-2
   displayCurrency?: string; // ISO-4217
-  address: AddressInput; // required by your schema
+  address: AddressInput;
   dob?: Date;
   phoneNumber?: string;
   features?: Partial<IUser["features"]>;
@@ -56,7 +57,7 @@ export type CreateUserInput = {
 };
 
 export type UpdateUserInput = Partial<
-  Omit<CreateUserInput, "clerkId" | "walletAddress">
+  Omit<CreateUserInput, "clerkId" | "walletAddress" | "walletId">
 > & { email?: string };
 
 type FeaturePatch = Partial<Record<"onramp" | "cards" | "lend", boolean>>;
@@ -66,26 +67,28 @@ type FeaturePatch = Partial<Record<"onramp" | "cards" | "lend", boolean>>;
 export async function createUser(input: CreateUserInput): Promise<IUser> {
   await connect();
 
+  // Idempotent by clerkId
   const existingByClerk: IUser | null = await User.findOne({
     clerkId: input.clerkId,
   }).lean<IUser>();
-  if (existingByClerk) return existingByClerk; // idempotent
+  if (existingByClerk) return existingByClerk;
 
   const normalizedEmail = input.email.toLowerCase().trim();
 
-  const existingByEmail: IUser | null = await User.findOne({
-    email: normalizedEmail,
-  }).lean<IUser>();
-  if (existingByEmail)
-    throw new ConflictError("Email is already registered to another user.");
+  // Uniqueness checks (use exists() to avoid TS union complexity)
+  const [emailTaken, walletTaken] = await Promise.all([
+    User.exists({ email: normalizedEmail }),
+    User.exists({ walletAddress: input.walletAddress }),
+  ]);
 
-  const existingByWallet: IUser | null = await User.findOne({
-    walletAddress: input.walletAddress,
-  }).lean<IUser>();
-  if (existingByWallet)
+  if (emailTaken) {
+    throw new ConflictError("Email is already registered to another user.");
+  }
+  if (walletTaken) {
     throw new ConflictError(
       "Wallet address is already linked to another user."
     );
+  }
 
   try {
     const created = await User.create({
@@ -94,6 +97,7 @@ export async function createUser(input: CreateUserInput): Promise<IUser> {
       firstName: input.firstName,
       lastName: input.lastName,
       walletAddress: input.walletAddress,
+      walletId: input.walletId, // persist Privy wallet id
       countryISO: input.countryISO,
       displayCurrency: input.displayCurrency,
       address: input.address,
@@ -131,6 +135,7 @@ export async function ensureUserFromClerk(params: {
   if (foundDoc) {
     const normalizedEmail = params.email.toLowerCase().trim();
     let dirty = false;
+
     if (normalizedEmail && normalizedEmail !== foundDoc.email) {
       (foundDoc as any).email = normalizedEmail;
       dirty = true;
@@ -149,19 +154,19 @@ export async function ensureUserFromClerk(params: {
 
   const normalizedEmail = params.email.toLowerCase().trim();
 
-  const existingByEmail: IUser | null = await User.findOne({
-    email: normalizedEmail,
-  }).lean<IUser>();
-  if (existingByEmail)
-    throw new ConflictError("Email is already registered to another user.");
+  const [emailTaken, walletTaken] = await Promise.all([
+    User.exists({ email: normalizedEmail }),
+    User.exists({ walletAddress: params.walletAddress }),
+  ]);
 
-  const existingByWallet: IUser | null = await User.findOne({
-    walletAddress: params.walletAddress,
-  }).lean<IUser>();
-  if (existingByWallet)
+  if (emailTaken) {
+    throw new ConflictError("Email is already registered to another user.");
+  }
+  if (walletTaken) {
     throw new ConflictError(
       "Wallet address is already linked to another user."
     );
+  }
 
   try {
     const created = await User.create({
@@ -218,7 +223,30 @@ export async function getUserByEmail(email: string): Promise<IUser> {
   return doc;
 }
 
-// ---------- Update ----------
+// ---------- Update (general patch) ----------
+
+export async function addConsent(
+  clerkId: string,
+  consent: { type: string; version: string; acceptedAt?: Date }
+) {
+  await connect();
+  const doc = await User.findOneAndUpdate(
+    { clerkId },
+    {
+      $push: {
+        consents: {
+          type: consent.type,
+          version: consent.version,
+          acceptedAt: consent.acceptedAt ?? new Date(),
+        },
+      },
+    },
+    { new: true }
+  ).lean<IUser>();
+  if (!doc) throw new NotFoundError("User not found");
+  return doc;
+}
+
 
 export async function updateUser(
   where: { clerkId?: string; userId?: string },
@@ -274,7 +302,7 @@ export async function updateUser(
   return updated;
 }
 
-// ---------- Specific setters ----------
+// ---------- Specific setters (safer than generic) ----------
 
 export async function setKycStatus(
   clerkId: string,
@@ -327,7 +355,6 @@ export async function setFeatures(
     { $set: set },
     { new: true, runValidators: true }
   ).lean<IUser>();
-
   if (!doc) throw new NotFoundError("User not found");
   return doc;
 }
@@ -346,27 +373,24 @@ export async function setStatus(
   return doc;
 }
 
-// ---------- Consents ----------
-
-export async function addConsent(
+/** Optional: backfill helper to set walletId / walletAddress after creation */
+export async function setWalletInfo(
   clerkId: string,
-  consent: { type: string; version: string; acceptedAt?: Date }
+  info: { walletId?: string; walletAddress?: string }
 ): Promise<IUser> {
   await connect();
+  const $set: Record<string, any> = {};
+  if (info.walletId) $set.walletId = info.walletId;
+  if (info.walletAddress) $set.walletAddress = info.walletAddress;
+
+  if (Object.keys($set).length === 0)
+    throw new ValidationError("Nothing to update");
+
   const doc: IUser | null = await User.findOneAndUpdate(
     { clerkId },
-    {
-      $push: {
-        consents: {
-          type: consent.type,
-          version: consent.version,
-          acceptedAt: consent.acceptedAt ?? new Date(),
-        },
-      },
-    },
-    { new: true }
+    { $set },
+    { new: true, runValidators: true }
   ).lean<IUser>();
-
   if (!doc) throw new NotFoundError("User not found");
   return doc;
 }
@@ -408,7 +432,6 @@ export async function listUsers(params?: {
 }
 
 // ---------- Soft delete ----------
-
 export async function softDeleteUser(clerkId: string): Promise<IUser> {
   await connect();
   const doc: IUser | null = await User.findOneAndUpdate(
