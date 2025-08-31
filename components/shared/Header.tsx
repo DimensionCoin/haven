@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { SignedIn, SignedOut, useClerk, useUser } from "@clerk/nextjs";
 import { BellIcon } from "lucide-react";
 import router from "next/router";
+import Image from "next/image";
 
 const NAV = [
   { name: "My Balance", href: "/dashboard" },
@@ -110,18 +111,8 @@ export default function Header() {
             <div className="flex items-center gap-3">
               <Link href={"/dashboard"}>
                 <div className="flex gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
-                    <svg
-                      className="h-4 w-4 text-primary-foreground"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 2L3 7v11h4v-6h6v6h4V7l-7-5z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full ">
+                    <Image src={"/logo.jpg"} alt="logo" width={60} height={60} className="rounded-full mt-1"/>
                   </div>
                   <div>
                     <SignedIn>
