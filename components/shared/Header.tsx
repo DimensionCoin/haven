@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SignedIn, SignedOut, useClerk, useUser } from "@clerk/nextjs";
 import { BellIcon } from "lucide-react";
+import router from "next/router";
 
 const NAV = [
   { name: "My Balance", href: "/dashboard" },
@@ -23,6 +24,53 @@ export default function Header() {
 
   const menuRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const checkedRef = useRef(false);
+
+   useEffect(() => {
+     // only run on protected pages (not sign-in/up or onboarding)
+     const isAuthPage =
+       pathname.startsWith("/sign-in") ||
+       pathname.startsWith("/sign-up") ||
+       pathname.startsWith("/onboarding");
+
+     if (!user || checkedRef.current || isAuthPage) return;
+
+     checkedRef.current = true;
+
+     (async () => {
+       try {
+         const res = await fetch("/api/me", {
+           method: "GET",
+           credentials: "include", // send Clerk cookies
+           cache: "no-store",
+         });
+
+         if (!res.ok) {
+           // if unauthorized somehow, do nothing here (Clerk/middleware will handle)
+           return;
+         }
+
+         const data = await res.json();
+         const onboarded =
+           !!data?.user &&
+           data.user.status === "active" &&
+           data.user.kycStatus === "approved";
+
+         if (!onboarded) {
+           // not onboarded => send to onboarding
+           router.replace("/onboarding");
+           return;
+         }
+
+         // optional: set a lightweight client cookie to skip future checks
+         // (middleware already uses a cookie pattern; this helps client routes too)
+         document.cookie =
+           "onboarded=1; path=/; SameSite=Lax; secure; max-age=31536000";
+       } catch {
+         // network hiccup — fail soft (middleware will still catch on nav)
+       }
+     })();
+   }, [user, pathname, router]);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {

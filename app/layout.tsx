@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
+import PrivyProviders from "@/providers/PrivyProvider"; // <-- "use client" inside this file
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({
@@ -22,34 +23,33 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
-      
-      <html lang="en" >
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
-          {/* subtle lime glow */}
-          <div className="fixed inset-0 -z-10">
-            <div className="absolute inset-0 bg-[radial-gradient(60%_40%_at_80%_10%,rgba(182,255,62,0.08),transparent),radial-gradient(40%_30%_at_10%_80%,rgba(182,255,62,0.06),transparent)]" />
-          </div>
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <ClerkProvider>
+          <PrivyProviders>
+            {/* subtle lime glow */}
+            <div className="fixed inset-0 -z-10">
+              <div className="absolute inset-0 bg-[radial-gradient(60%_40%_at_80%_10%,rgba(182,255,62,0.08),transparent),radial-gradient(40%_30%_at_10%_80%,rgba(182,255,62,0.06),transparent)]" />
+            </div>
 
-          <Toaster position="top-right" />
+            <Toaster position="top-right" />
 
-          <div className="min-h-screen flex flex-col">
-            <main className="flex-1">
-              <div className="mx-auto w-full ">
-                {children}
-              </div>
-            </main>
+            <div className="min-h-screen flex flex-col">
+              <main className="flex-1">
+                <div className="mx-auto w-full">{children}</div>
+              </main>
 
-            <footer className="border-t border-border">
-              <div className="mx-auto w-full max-w-6xl px-4 py-4 text-xs text-muted-foreground">
-                © {new Date().getFullYear()} Haven
-              </div>
-            </footer>
-          </div>
-        </body>
-      </html>
-    </ClerkProvider>
+              <footer className="border-t border-border">
+                <div className="mx-auto w-full max-w-6xl px-4 py-4 text-xs text-muted-foreground">
+                  © {new Date().getFullYear()} Haven
+                </div>
+              </footer>
+            </div>
+          </PrivyProviders>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }

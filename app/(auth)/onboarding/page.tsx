@@ -1,10 +1,9 @@
 "use client";
 
-import type React from "react";
-
-import { useEffect, useMemo, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useUser, useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 
 type FormState = {
   countryISO: string;
@@ -26,17 +25,85 @@ const COUNTRY_DEFAULTS: Record<string, { currency: string }> = {
   CA: { currency: "CAD" },
   US: { currency: "USD" },
   GB: { currency: "GBP" },
-  EU: { currency: "EUR" }, // you can map specific EU countries too
+  EU: { currency: "EUR" },
 };
 
+/** Minimal, SDK-agnostic shape we care about, for a type guard */
+type MaybeWallet = {
+  chain?: string;
+  chainType?: string;
+  type?: string;
+  walletClientType?: string;
+  address?: string;
+  id?: string;
+};
+
+/** Narrow unknown → “embedded solana with an address” */
+function isSolanaEmbedded(
+  w: unknown
+): w is Required<Pick<MaybeWallet, "address">> & MaybeWallet {
+  if (!w || typeof w !== "object") return false;
+  const ww = w as MaybeWallet;
+  const chainVal = ww.chain ?? ww.chainType ?? ww.type;
+  const isSol = chainVal === "solana";
+  const isEmbedded = ww.walletClientType
+    ? ww.walletClientType === "privy"
+    : true;
+  return Boolean(isSol && isEmbedded && ww.address);
+}
+
 export default function OnboardingPage() {
-  const { user, isLoaded } = useUser();
   const router = useRouter();
+  const { user, isLoaded } = useUser();
+  const { getToken } = useAuth();
+
+  // Privy
+  const { ready, authenticated, user: privyUser, login } = usePrivy();
+  const { wallets } = useWallets();
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [privyNotice, setPrivyNotice] = useState<
+    | { kind: "idle" }
+    | { kind: "prompting" }
+    | { kind: "auth"; email?: string }
+    | { kind: "wallet-ready" }
+  >({ kind: "idle" });
 
-  // sensible defaults (Canada)
+  // ensure we only call login() once per mount
+  const kickedOff = useRef(false);
+
+  // Fire Privy OTP asap, but do NOT block the form.
+  useEffect(() => {
+    if (!ready || authenticated || kickedOff.current) return;
+    kickedOff.current = true;
+
+    (async () => {
+      try {
+        setPrivyNotice({ kind: "prompting" });
+        console.log("[privy] opening login modal");
+        await login(); // user completes OTP here (or session is restored)
+        setPrivyNotice({ kind: "auth", email: privyUser?.email?.address });
+        console.log("[privy] authenticated:", true);
+      } catch (e) {
+        // If they close the modal, it's fine — form still usable
+        console.warn("[privy] login() dismissed/failed:", e);
+        setPrivyNotice({ kind: "idle" });
+      }
+    })();
+  }, [ready, authenticated, login, privyUser?.email?.address]);
+
+  // If a wallet appears later, show a friendly “ready” message (non-blocking)
+  useEffect(() => {
+    if (!authenticated) return;
+    const found = wallets.find(isSolanaEmbedded);
+    if (found?.address) {
+      setPrivyNotice({ kind: "wallet-ready" });
+      console.log("[privy] embedded wallet detected:", found.address);
+    }
+  }, [authenticated, wallets]);
+
+  // Form state
   const [form, setForm] = useState<FormState>({
     countryISO: "CA",
     displayCurrency: "CAD",
@@ -55,10 +122,10 @@ export default function OnboardingPage() {
 
   // auto-set displayCurrency when country changes
   useEffect(() => {
-    const upper = form.countryISO.toUpperCase();
-    const def = COUNTRY_DEFAULTS[upper];
+    const up = form.countryISO.toUpperCase();
+    const def = COUNTRY_DEFAULTS[up];
     if (def && form.displayCurrency !== def.currency) {
-      setForm((prev) => ({ ...prev, displayCurrency: def.currency }));
+      setForm((p) => ({ ...p, displayCurrency: def.currency }));
     }
   }, [form.countryISO, form.displayCurrency]);
 
@@ -70,7 +137,6 @@ export default function OnboardingPage() {
     return (email ?? "").toLowerCase().trim();
   }, [user]);
 
-  // If Clerk isn't loaded, hold the UI briefly
   if (!isLoaded) return null;
 
   async function onSubmit(e: React.FormEvent) {
@@ -79,18 +145,17 @@ export default function OnboardingPage() {
     setError(null);
 
     try {
-      // Minimal client-side checks
       if (!user) throw new Error("Not signed in.");
       if (!form.acceptTos || !form.acceptPrivacy || !form.acceptRisk) {
         throw new Error("Please accept all policies to continue.");
       }
 
+      // We do NOT wait for Privy here — server ensures/reuses wallet.
       const payload = {
         clerkId: user.id,
         email: primaryEmail,
         firstName: user.firstName ?? "",
         lastName: user.lastName ?? "",
-        walletAddress: "", // server will generate
         countryISO: form.countryISO.toUpperCase(),
         displayCurrency: form.displayCurrency.toUpperCase(),
         address: {
@@ -111,9 +176,13 @@ export default function OnboardingPage() {
         ],
       };
 
+      const token = await getToken();
       const res = await fetch("/api/onboarding", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
 
@@ -122,13 +191,22 @@ export default function OnboardingPage() {
         throw new Error(msg || "Failed to complete onboarding.");
       }
 
-      // Success — go to dashboard (the dashboard will be locked until KYC is approved)
-      router.push("/dashboard");
-    } catch (err: unknown) {
+      router.replace("/dashboard");
+    } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setSubmitting(false);
     }
   }
+
+  const renderPrivyNotice = () => {
+    if (privyNotice.kind === "prompting")
+      return "Verify your email with Privy to pre-create your wallet (optional).";
+    if (privyNotice.kind === "auth")
+      return "Email verified with Privy — finishing up…";
+    if (privyNotice.kind === "wallet-ready")
+      return "Embedded wallet is ready ✔︎";
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white relative overflow-hidden">
@@ -145,6 +223,11 @@ export default function OnboardingPage() {
             Finish your account setup to unlock DeFi-powered savings with
             traditional banking security.
           </p>
+          {renderPrivyNotice() && (
+            <div className="mt-3 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-zinc-300">
+              {renderPrivyNotice()}
+            </div>
+          )}
         </div>
 
         {error && (
@@ -162,7 +245,7 @@ export default function OnboardingPage() {
                   Country (ISO-2)
                 </span>
                 <input
-                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2"
                   placeholder="CA"
                   value={form.countryISO}
                   onChange={(e) =>
@@ -181,7 +264,7 @@ export default function OnboardingPage() {
                   Display Currency (ISO-4217)
                 </span>
                 <input
-                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2"
                   placeholder="CAD"
                   value={form.displayCurrency}
                   onChange={(e) =>
@@ -203,7 +286,7 @@ export default function OnboardingPage() {
                   Address line 1
                 </span>
                 <input
-                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2"
                   value={form.line1}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, line1: e.target.value }))
@@ -216,7 +299,7 @@ export default function OnboardingPage() {
                   Address line 2 (optional)
                 </span>
                 <input
-                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2"
                   value={form.line2}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, line2: e.target.value }))
@@ -226,7 +309,7 @@ export default function OnboardingPage() {
               <label className="flex flex-col gap-2">
                 <span className="text-sm font-medium text-zinc-300">City</span>
                 <input
-                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2"
                   value={form.city}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, city: e.target.value }))
@@ -239,7 +322,7 @@ export default function OnboardingPage() {
                   State/Province
                 </span>
                 <input
-                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2"
                   value={form.stateOrProvince}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, stateOrProvince: e.target.value }))
@@ -252,7 +335,7 @@ export default function OnboardingPage() {
                   Postal code
                 </span>
                 <input
-                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2"
                   value={form.postalCode}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, postalCode: e.target.value }))
@@ -269,7 +352,7 @@ export default function OnboardingPage() {
                   Phone (E.164)
                 </span>
                 <input
-                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2"
                   placeholder="+14165551234"
                   value={form.phoneNumber}
                   onChange={(e) =>
@@ -283,7 +366,7 @@ export default function OnboardingPage() {
                 </span>
                 <input
                   type="date"
-                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white placeholder-zinc-400 focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                  className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2"
                   value={form.dob}
                   onChange={(e) =>
                     setForm((p) => ({ ...p, dob: e.target.value }))
@@ -298,7 +381,7 @@ export default function OnboardingPage() {
                 Savings risk preference
               </span>
               <select
-                className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2 text-white focus:border-[rgb(182,255,62)] focus:ring-1 focus:ring-[rgb(182,255,62)] transition-colors"
+                className="rounded-lg border border-white/20 bg-white/10 backdrop-blur-sm px-3 py-2"
                 value={form.riskLevel}
                 onChange={(e) =>
                   setForm((p) => ({
@@ -331,7 +414,7 @@ export default function OnboardingPage() {
                   onChange={(e) =>
                     setForm((p) => ({ ...p, acceptTos: e.target.checked }))
                   }
-                  className="w-4 h-4 rounded border-white/20 bg-white/10 text-[rgb(182,255,62)] focus:ring-[rgb(182,255,62)] focus:ring-offset-0"
+                  className="w-4 h-4 rounded border-white/20 bg-white/10"
                 />
                 <span className="text-sm text-zinc-300">
                   I accept the Terms of Service
@@ -344,7 +427,7 @@ export default function OnboardingPage() {
                   onChange={(e) =>
                     setForm((p) => ({ ...p, acceptPrivacy: e.target.checked }))
                   }
-                  className="w-4 h-4 rounded border-white/20 bg-white/10 text-[rgb(182,255,62)] focus:ring-[rgb(182,255,62)] focus:ring-offset-0"
+                  className="w-4 h-4 rounded border-white/20 bg-white/10"
                 />
                 <span className="text-sm text-zinc-300">
                   I accept the Privacy Policy
@@ -357,7 +440,7 @@ export default function OnboardingPage() {
                   onChange={(e) =>
                     setForm((p) => ({ ...p, acceptRisk: e.target.checked }))
                   }
-                  className="w-4 h-4 rounded border-white/20 bg-white/10 text-[rgb(182,255,62)] focus:ring-[rgb(182,255,62)] focus:ring-offset-0"
+                  className="w-4 h-4 rounded border-white/20 bg-white/10"
                 />
                 <span className="text-sm text-zinc-300">
                   I understand the investment risks
@@ -371,12 +454,12 @@ export default function OnboardingPage() {
                 disabled={submitting}
                 className="rounded-lg bg-[rgb(182,255,62)] px-6 py-3 font-semibold text-black hover:bg-[rgb(182,255,62)]/90 disabled:opacity-60 transition-all duration-200 shadow-lg hover:shadow-[rgb(182,255,62)]/25"
               >
-                {submitting ? "Saving..." : "Complete Setup"}
+                {submitting ? "Working…" : "Complete Setup"}
               </button>
               <button
                 type="button"
                 disabled={submitting}
-                className="rounded-lg border border-white/20 bg-white/5 backdrop-blur-sm px-6 py-3 text-zinc-300 hover:bg-white/10 hover:border-white/30 transition-all duration-200"
+                className="rounded-lg border border-white/20 bg-white/5 px-6 py-3 text-zinc-300 hover:bg-white/10 hover:border-white/30"
                 onClick={() => router.push("/dashboard")}
                 title="You can complete KYC later — your dashboard will be locked until you do."
               >

@@ -71,120 +71,47 @@ export async function createUser(input: CreateUserInput): Promise<IUser> {
   const existingByClerk: IUser | null = await User.findOne({
     clerkId: input.clerkId,
   }).lean<IUser>();
-  if (existingByClerk) return existingByClerk;
+
+  if (existingByClerk) {
+    // ✅ If the doc exists but is missing walletId, backfill it
+    if (input.walletId && !existingByClerk.walletId) {
+      await User.updateOne(
+        { clerkId: input.clerkId },
+        { $set: { walletId: input.walletId } }
+      );
+      const refreshed = await User.findOne({ clerkId: input.clerkId }).lean<IUser>();
+      return refreshed as IUser;
+    }
+    return existingByClerk;
+  }
 
   const normalizedEmail = input.email.toLowerCase().trim();
 
-  // Uniqueness checks (use exists() to avoid TS union complexity)
+  // Uniqueness checks
   const [emailTaken, walletTaken] = await Promise.all([
     User.exists({ email: normalizedEmail }),
     User.exists({ walletAddress: input.walletAddress }),
   ]);
+  if (emailTaken) throw new ConflictError("Email is already registered to another user.");
+  if (walletTaken) throw new ConflictError("Wallet address is already linked to another user.");
 
-  if (emailTaken) {
-    throw new ConflictError("Email is already registered to another user.");
-  }
-  if (walletTaken) {
-    throw new ConflictError(
-      "Wallet address is already linked to another user."
-    );
-  }
-
-  try {
-    const created = await User.create({
-      clerkId: input.clerkId,
-      email: normalizedEmail,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      walletAddress: input.walletAddress,
-      walletId: input.walletId, // persist Privy wallet id
-      countryISO: input.countryISO,
-      displayCurrency: input.displayCurrency,
-      address: input.address,
-      dob: input.dob,
-      phoneNumber: input.phoneNumber,
-      features: input.features,
-      riskLevel: input.riskLevel,
-      status: input.status,
-    });
-    return toIUser(created);
-  } catch (e: any) {
-    if (isDupErr(e))
-      throw new ConflictError("User already exists (duplicate key).");
-    throw e;
-  }
-}
-
-/**
- * Create-or-update on first sign-in.
- * NOTE: your schema REQUIRES address & wallet; we require them here too.
- */
-export async function ensureUserFromClerk(params: {
-  clerkId: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  walletAddress: string; // required
-  countryISO: string; // required
-  displayCurrency?: string;
-  address: AddressInput; // required
-}): Promise<IUser> {
-  await connect();
-
-  const foundDoc = await User.findOne({ clerkId: params.clerkId });
-  if (foundDoc) {
-    const normalizedEmail = params.email.toLowerCase().trim();
-    let dirty = false;
-
-    if (normalizedEmail && normalizedEmail !== foundDoc.email) {
-      (foundDoc as any).email = normalizedEmail;
-      dirty = true;
-    }
-    if (params.firstName && params.firstName !== foundDoc.firstName) {
-      (foundDoc as any).firstName = params.firstName;
-      dirty = true;
-    }
-    if (params.lastName && params.lastName !== foundDoc.lastName) {
-      (foundDoc as any).lastName = params.lastName;
-      dirty = true;
-    }
-    if (dirty) await foundDoc.save();
-    return toIUser(foundDoc);
-  }
-
-  const normalizedEmail = params.email.toLowerCase().trim();
-
-  const [emailTaken, walletTaken] = await Promise.all([
-    User.exists({ email: normalizedEmail }),
-    User.exists({ walletAddress: params.walletAddress }),
-  ]);
-
-  if (emailTaken) {
-    throw new ConflictError("Email is already registered to another user.");
-  }
-  if (walletTaken) {
-    throw new ConflictError(
-      "Wallet address is already linked to another user."
-    );
-  }
-
-  try {
-    const created = await User.create({
-      clerkId: params.clerkId,
-      email: normalizedEmail,
-      firstName: params.firstName,
-      lastName: params.lastName,
-      walletAddress: params.walletAddress,
-      countryISO: params.countryISO,
-      displayCurrency: params.displayCurrency,
-      address: params.address,
-    });
-    return toIUser(created);
-  } catch (e: any) {
-    if (isDupErr(e))
-      throw new ConflictError("User already exists (duplicate key).");
-    throw e;
-  }
+  const created = await User.create({
+    clerkId: input.clerkId,
+    email: normalizedEmail,
+    firstName: input.firstName,
+    lastName: input.lastName,
+    walletAddress: input.walletAddress,
+    walletId: input.walletId, // <-- ensure we persist it
+    countryISO: input.countryISO,
+    displayCurrency: input.displayCurrency,
+    address: input.address,
+    dob: input.dob,
+    phoneNumber: input.phoneNumber,
+    features: input.features,
+    riskLevel: input.riskLevel,
+    status: input.status,
+  });
+  return toIUser(created);
 }
 
 // ---------- Reads ----------

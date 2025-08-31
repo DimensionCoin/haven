@@ -80,6 +80,8 @@ const UserSchema = new Schema(
       match: /^[A-Z]{3}$/,
     },
 
+    privyUserId: { type: String, index: true, sparse: true },
+
     address: { type: AddressSchema, required: true, select: false },
 
     dob: { type: Date, select: false },

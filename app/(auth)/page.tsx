@@ -13,17 +13,15 @@ const Landing = () => {
       <header className="container mx-auto max-w-6xl px-6 py-6 flex items-center justify-between">
         <div className="text-xl font-bold tracking-tight">Haven</div>
         <nav className="flex items-center gap-3">
-          <Link
-            href="/sign-in"
-            className="inline-flex items-center rounded-xl px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md transition"
-          >
-            Sign in
+          <Link href="/sign-in">
+            <div className=" items-center rounded-full px-6 py-3 text-sm font-medium bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md transition">
+              Sign in
+            </div>
           </Link>
-          <Link
-            href="/sign-up"
-            className="inline-flex items-center rounded-xl px-4 py-2 text-sm font-medium bg-white/5 hover:bg-white/15 border border-white/20 backdrop-blur-md transition"
-          >
-            Sign up
+          <Link href="/sign-up">
+            <div className=" items-center rounded-full px-6 py-3 text-sm font-medium bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md transition">
+              Sign up
+            </div>
           </Link>
         </nav>
       </header>
@@ -46,13 +44,13 @@ const Landing = () => {
 
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
-              href="/dashboard"
+              href="/sign-up"
               className="inline-flex items-center justify-center rounded-2xl px-6 py-3 text-sm font-semibold bg-[rgb(182,255,62)] hover:bg-[rgb(182,255,62)]/90 text-black shadow-lg shadow-[rgb(182,255,62)]/30 transition"
             >
               Open Account
             </Link>
             <Link
-              href="/sign-up"
+              href="/faq"
               className="inline-flex items-center justify-center rounded-2xl px-6 py-3 text-sm font-medium bg-white/10 hover:bg-white/20 border border-white/20 text-white transition"
             >
               Learn More
